@@ -1,11 +1,5 @@
 import { weatherCacheService } from "./WeatherCache";
 
-interface WeatherError {
-  code: number;
-  message: string;
-  type: "API_ERROR" | "RATE_LIMIT" | "NETWORK_ERROR";
-}
-
 export async function fetchWeatherData(
   city: string,
   state: string,
@@ -13,109 +7,90 @@ export async function fetchWeatherData(
   latitude: string,
   longitude: string
 ) {
-  const cacheKey = weatherCacheService.generateCacheKey(
-    city,
-    state,
-    countryCode,
-    latitude,
-    longitude
-  );
+  const cacheKey = weatherCacheService.generateCacheKey(latitude, longitude);
 
   // Check cache first
   const cachedData = weatherCacheService.get(cacheKey);
-  if (cachedData) return cachedData;
-
-  try {
-    const [
-      currentWeatherResponse,
-      hourlyForecastWeatherResponse,
-      dailyForecastWeatherResponse,
-    ] = await Promise.all([
-      fetch(
-        `https://api.tomorrow.io/v4/weather/realtime?location=${latitude},${longitude}&apikey=${
-          import.meta.env.VITE_WHEATHER_API_KEY
-        }`
-      ),
-      fetch(
-        `https://api.tomorrow.io/v4/weather/forecast?location=${latitude},${longitude}&timesteps=1h&apikey=${
-          import.meta.env.VITE_WHEATHER_API_KEY
-        }`
-      ),
-      fetch(
-        `https://api.tomorrow.io/v4/weather/forecast?location=${latitude},${longitude}&timesteps=1d&apikey=${
-          import.meta.env.VITE_WHEATHER_API_KEY
-        }`
-      ),
-    ]);
-
-    const currentWeatherData = await currentWeatherResponse.json();
-    const hourlyForecastData = await hourlyForecastWeatherResponse.json();
-    const dailyForecastData = await dailyForecastWeatherResponse.json();
-
-    if (
-      currentWeatherData.code === 429001 ||
-      dailyForecastData.code === 429001 ||
-      hourlyForecastData.code === 429001
-    ) {
-      return {
-        error: true,
-        code: 429001,
-        message:
-          "The request limit for this resource has been reached for the current rate limit window. Wait and retry the operation, or examine your API request volume.",
-      };
+  if (cachedData) {
+    // If we have cached data but it's stale, trigger a background refresh
+    if (cachedData.isStale) {
+      setTimeout(() => {
+        fetchFreshData().catch(console.error);
+      }, 100);
     }
+    return cachedData;
+  }
 
-    if (
-      !currentWeatherData &&
-      !dailyForecastData &&
-      !hourlyForecastData?.timelines
-    ) {
-      throw new Error("Could not load weather for this location");
-    }
+  return fetchFreshData();
 
-    const next24hours = hourlyForecastData.timelines.hourly
-      .map((hour: unknown, hourIndex: number) => {
-        if (hourIndex % 6 === 0) {
-          return hour;
-        } else {
-          return null;
+  async function fetchFreshData() {
+    console.log("Fetching fresh weather data");
+    try {
+      const apiKey = import.meta.env.VITE_WHEATHER_API_KEY;
+      const baseUrl = "https://api.tomorrow.io/v4/weather";
+
+      const responses = await Promise.all([
+        fetch(
+          `${baseUrl}/realtime?location=${latitude},${longitude}&apikey=${apiKey}`
+        ),
+        fetch(
+          `${baseUrl}/forecast?location=${latitude},${longitude}&timesteps=1h&apikey=${apiKey}`
+        ),
+        fetch(
+          `${baseUrl}/forecast?location=${latitude},${longitude}&timesteps=1d&apikey=${apiKey}`
+        ),
+      ]);
+
+      // Check for rate limiting on any response
+      for (const response of responses) {
+        if (!response.ok) {
+          const data = await response.json();
+          if (data.code === 429001) {
+            return {
+              error: true,
+              code: 429001,
+              message: "Rate limit reached. Please try again later.",
+            };
+          }
+          throw new Error(`API Error: ${response.status}`);
         }
-      })
-      .filter((hour: unknown) => hour)
-      .slice(0, 6);
+      }
 
-    hourlyForecastData.timelines.hourly = next24hours;
+      const [currentWeatherData, hourlyForecastData, dailyForecastData] =
+        await Promise.all(responses.map((r) => r.json()));
 
-    // Prepare the response data
-    const responseData = {
-      currentWeather: currentWeatherData,
-      hourlyWeather: hourlyForecastData,
-      dailyWeather: dailyForecastData,
-    };
+      // Process hourly forecast to show every 6 hours for next 24 hours
+      const next24hours = hourlyForecastData.timelines.hourly
+        .filter((_: unknown, index: number) => index % 6 === 0)
+        .slice(0, 6);
 
-    // Cache the new data
-    weatherCacheService.set(cacheKey, { ...responseData });
-
-    return responseData;
-  } catch (error) {
-    if (error instanceof Error) {
-      const weatherError: WeatherError = {
-        code: 500,
-        message: error.message || "Unknown error occurred",
-        type: "API_ERROR",
-      };
-
-      console.error("Weather API Error:", weatherError);
-      return { error: weatherError };
-    } else {
-      console.error("Weather API Error:", error);
-      return {
-        error: {
-          code: 500,
-          message: "Unknown error occurred",
-          type: "API_ERROR",
+      const responseData = {
+        currentWeather: currentWeatherData,
+        hourlyWeather: {
+          ...hourlyForecastData,
+          timelines: { hourly: next24hours },
         },
+        dailyWeather: dailyForecastData,
       };
+
+      // Cache the successful response
+      weatherCacheService.set(cacheKey, responseData);
+      return responseData;
+    } catch (error) {
+      // If fetch fails and we have stale data, return it
+      const staleData = weatherCacheService.get(cacheKey);
+      if (staleData) {
+        console.log("Fetch failed, returning stale data");
+        return staleData;
+      }
+      console.error("Weather API Error:", error);
+      const weatherError = {
+        code: 500,
+        message:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "API_ERROR" as const,
+      };
+      return { error: weatherError };
     }
   }
 }

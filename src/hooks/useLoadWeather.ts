@@ -70,7 +70,7 @@ export function useLoadWeather<T = unknown>(
     queryFn,
     enabled,
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 60 * 1000,
   });
 
   const mutation = useMutation({
@@ -112,7 +112,18 @@ async function fetchNominatimData(coords: {
   return response.json();
 }
 
-function getNominatimAddress(data: any) {
+interface NominatimAddress {
+  city?: string;
+  state?: string;
+  country_code?: string;
+  country?: string;
+}
+
+interface NominatimResponse {
+  address?: NominatimAddress;
+}
+
+function getNominatimAddress(data: NominatimResponse) {
   const address = data.address || {};
   return {
     city: address.city || "",

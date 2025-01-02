@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/cities", "destination": "/index.html" },
     { "source": "/settings", "destination": "/index.html" },
+    { "source": "/map", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
