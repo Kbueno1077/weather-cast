@@ -46,6 +46,10 @@ export function useLoadWeather<T = unknown>(
       );
 
       const weatherData = await loadWeather(request);
+
+      if (!weatherData || (weatherData.error && weatherData.code === 429001))
+        throw new Error("Error fetching weather data");
+
       useWeatherStore.getState().setStoreFromData(weatherData);
       setData(weatherData as T);
       setError("");
@@ -53,6 +57,7 @@ export function useLoadWeather<T = unknown>(
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load weather data";
+
       setError(errorMessage);
       return null;
     } finally {

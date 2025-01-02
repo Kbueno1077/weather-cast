@@ -2,6 +2,7 @@ import { Button, Switch } from "@nextui-org/react";
 import { useWeatherStore } from "@/store/zustand";
 
 const DisplayError = ({ error }: { error: string }) => {
+  console.log("🚀 ~ DisplayError ~ error:", error);
   const { locationPermission, setLocationPermission } = useWeatherStore(
     (state) => state
   );
@@ -22,7 +23,7 @@ const DisplayError = ({ error }: { error: string }) => {
 
       setLocationPermission("accepted");
     } catch (error) {
-      setLocationPermission("denied");
+      setLocationPermission(error.code);
       console.error("Location permission error:", error);
     }
   };

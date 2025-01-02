@@ -44,7 +44,7 @@ function General() {
 
       setLocationPermission("accepted");
     } catch (error) {
-      setLocationPermission("denied");
+      setLocationPermission(error.message);
       console.error("Location permission error:", error);
     }
   };

@@ -52,7 +52,7 @@ export type WeatherActions = {
 
   changeSettingsUnit: (
     key: keyof DefaultStateType["unitSettings"],
-    unit: string
+    unit: string | boolean
   ) => void;
 
   addSavedCity: (cityData: CurrentCityType) => void;

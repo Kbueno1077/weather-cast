@@ -1,11 +1,10 @@
+import { NextUIProvider } from "@nextui-org/system";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import AddedCities from "./components/AddedCities/AddedCities";
 import Layout from "./components/Layout";
 import { QueryProvider } from "./providers/QueryProvider";
+import Cities from "./screens/Cities";
 import Home from "./screens/Home";
 import Settings from "./screens/settings/Settings";
-import { NextUIProvider } from "@nextui-org/system";
-import Cities from "./screens/Cities";
 
 function App() {
   return (
