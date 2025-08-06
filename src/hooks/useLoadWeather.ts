@@ -58,6 +58,12 @@ export function useLoadWeather<T = unknown>(
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load weather data";
 
+      if (errorMessage === "Rate limit reached. Please try again later.") {
+        setError("Rate limit reached. Please try again later.");
+      } else {
+        setError(errorMessage);
+      }
+
       setError(errorMessage);
       return null;
     } finally {

@@ -30,7 +30,12 @@ export type InitStateType = {
     latitude?: string;
     longitude?: string;
   }[];
+
   locationPermission: "denied" | "accepted" | "N/A";
+  error: boolean;
+  message: string;
+  code: number;
+  isLoading: boolean;
 };
 
 export type DefaultStateType = InitStateType & {
@@ -70,6 +75,10 @@ export const defaultState: InitStateType = {
   currentCity: null,
   savedCities: [],
   locationPermission: "N/A",
+  error: false,
+  message: "",
+  code: 200,
+  isLoading: false,
 };
 
 export const useWeatherStore = create<WeatherStore>()(
@@ -105,6 +114,8 @@ export const useWeatherStore = create<WeatherStore>()(
         latitude?: string;
         longitude?: string;
       }) => {
+        set({ isLoading: true });
+
         const request = new Request(
           `${window.location.origin}?${new URLSearchParams({
             city: cityData.city,
@@ -116,9 +127,17 @@ export const useWeatherStore = create<WeatherStore>()(
         );
 
         const data = await loadWeather(request);
+        console.log("🚀 ~ data:", data);
+
+        if (!data.error) {
+          data.error = false;
+          data.code = 200;
+          data.message = "";
+        }
 
         set({
           ...data,
+          isLoading: false,
           currentCity: {
             city: cityData.city,
             state: cityData.state,

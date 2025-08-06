@@ -55,8 +55,10 @@
   }
 }
 
-html,
 body {
-  @apply bg-background text-foreground;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  @apply bg-background min-h-screen text-foreground;
+}
+
+#root {
+  @apply min-h-screen;
 }

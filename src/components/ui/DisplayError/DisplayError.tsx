@@ -2,7 +2,6 @@ import { Button, Switch } from "@nextui-org/react";
 import { useWeatherStore } from "@/store/zustand";
 
 const DisplayError = ({ error }: { error: string }) => {
-  console.log("🚀 ~ DisplayError ~ error:", error);
   const { locationPermission, setLocationPermission } = useWeatherStore(
     (state) => state
   );
@@ -36,6 +35,15 @@ const DisplayError = ({ error }: { error: string }) => {
 
       <div className="w-full max-w-[550px]">
         {error === "Error fetching weather data" && (
+          <p className="text-2xl">
+            Sorry, we encounter and issue loading information, it might have to
+            due to the high traffic of data during the last hour as this is a
+            small project not intended for large usage, try again within the
+            next hour
+          </p>
+        )}
+
+        {error === "Rate limit reached. Please try again later." && (
           <p className="text-2xl">
             Sorry, we encounter and issue loading information, it might have to
             due to the high traffic of data during the last hour as this is a

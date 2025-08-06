@@ -24,7 +24,6 @@ export async function fetchWeatherData(
   return fetchFreshData();
 
   async function fetchFreshData() {
-    console.log("Fetching fresh weather data");
     try {
       const apiKey = import.meta.env.VITE_WHEATHER_API_KEY;
       const baseUrl = "https://api.tomorrow.io/v4/weather";
@@ -74,7 +73,10 @@ export async function fetchWeatherData(
       };
 
       // Cache the successful response
-      weatherCacheService.set(cacheKey, responseData);
+      if (!responseData.error) {
+        weatherCacheService.set(cacheKey, responseData);
+      }
+
       return responseData;
     } catch (error) {
       // If fetch fails and we have stale data, return it
