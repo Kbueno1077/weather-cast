@@ -63,16 +63,7 @@ function Sidebar() {
           </Button>
         </Link>
 
-        <Link to={"/map"}>
-          <Button variant="light" className="py-10 w-[60px]">
-            <div className="flex flex-col gap-2 items-center justify-center">
-              <CiMap size={20} style={{ color: getTextColor("/map") }} />
-              <h2 className="text-sm" style={{ color: getTextColor("/map") }}>
-                Map
-              </h2>
-            </div>
-          </Button>
-        </Link>
+       
 
         <Link to="/settings">
           <Button variant="light" className="py-10 w-[60px]">

@@ -5,7 +5,6 @@ import { QueryProvider } from "./providers/QueryProvider";
 import Cities from "./screens/Cities";
 import Home from "./screens/Home";
 import Settings from "./screens/settings/Settings";
-import Map from "./screens/Map";
 
 function App() {
   return (
@@ -17,7 +16,6 @@ function App() {
               <Route index element={<Home />} />
               <Route path="cities" element={<Cities />} />
               <Route path="settings" element={<Settings />} />
-              <Route path="map" element={<Map />} />
             </Route>
           </Routes>
         </BrowserRouter>
