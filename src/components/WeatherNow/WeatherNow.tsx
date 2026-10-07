@@ -1,19 +1,18 @@
-import { getCurrentUnitSettings, useWeatherStore } from "@/store/zustand";
-import { convertTemperature, weatherCodeToIconName } from "@/utils/utilities";
 import LazyWeatherIcon from "@/components/ui/LazyWeatherIcon/LazyWeatherIcon";
-import { Button } from "@nextui-org/react";
+import { useWeatherStore } from "@/store/zustand";
+import type { CurrentCityType } from "@/types/weather";
+import { convertTemperature, sameCity, weatherCodeToIconName } from "@/utils/utilities";
+import { Button } from "@heroui/react";
 import { FaRegStar } from "react-icons/fa";
 import { FaStar } from "react-icons/fa6";
-import { CurrentCityType } from "@/types/OpenWeatherTypes";
 
 const WeatherNow = () => {
-  const {
-    currentCity,
-    savedCities,
-    addSavedCity,
-    removeSavedCity,
-    currentWeather,
-  } = useWeatherStore((state) => state);
+  const currentCity = useWeatherStore((state) => state.currentCity);
+  const savedCities = useWeatherStore((state) => state.savedCities);
+  const addSavedCity = useWeatherStore((state) => state.addSavedCity);
+  const removeSavedCity = useWeatherStore((state) => state.removeSavedCity);
+  const currentWeather = useWeatherStore((state) => state.currentWeather);
+  const temperatureUnit = useWeatherStore((state) => state.unitSettings.temperatureUnit);
   const currentTime = new Date();
   const isDaytime = currentTime.getHours() >= 6 && currentTime.getHours() < 18;
 
@@ -22,14 +21,27 @@ const WeatherNow = () => {
     isDaytime
   );
 
-  const isSaved = savedCities.find(
-    (s) =>
-      s.city === currentCity?.city &&
-      s.state === currentCity?.state &&
-      s.country === currentCity?.country
-  );
+  const isSaved = currentCity
+    ? savedCities.some((saved) => sameCity(saved, currentCity))
+    : false;
 
-  const temperatureUnit = getCurrentUnitSettings("temperatureUnit");
+  const temperature = convertTemperature(currentWeather?.data.values.temperature || 0)[
+    temperatureUnit
+  ];
+
+  const saveCity = () => {
+    if (!currentCity?.city) return;
+    const city: CurrentCityType = {
+      city: currentCity.city,
+      state: currentCity.state,
+      country: currentCity.country,
+      countryName: currentCity.countryName,
+      latitude: currentCity.latitude,
+      longitude: currentCity.longitude,
+    };
+    if (isSaved) removeSavedCity(city);
+    else addSavedCity(city);
+  };
 
   return (
     <div
@@ -46,7 +58,7 @@ const WeatherNow = () => {
             <p className="text-sm">
               Chance of rain:{" "}
               <span aria-label="Precipitation probability">
-                {currentWeather?.data.values.precipitationProbability}%
+                {currentWeather?.data.values.precipitationProbability ?? "–"}%
               </span>
             </p>
           </div>
@@ -55,38 +67,21 @@ const WeatherNow = () => {
             className="mt-2"
             isIconOnly
             variant="flat"
-            onPress={
-              isSaved
-                ? () => removeSavedCity(currentCity?.city || "")
-                : () => addSavedCity(currentCity as CurrentCityType)
-            }
+            onPress={saveCity}
             aria-label={isSaved ? "Remove from saved cities" : "Save city"}
+            isDisabled={!currentCity?.city}
           >
-            {isSaved ? (
-              <FaStar aria-hidden="true" />
-            ) : (
-              <FaRegStar aria-hidden="true" />
-            )}
+            {isSaved ? <FaStar aria-hidden="true" /> : <FaRegStar aria-hidden="true" />}
           </Button>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-center">
-            <p
-              className="text-6xl font-bold text-primary-foreground"
-              aria-label={`Current temperature: ${
-                currentWeather?.data.values.temperature
-              }${getCurrentUnitSettings("temperatureUnit")}`}
-            >
-              {
-                convertTemperature(
-                  currentWeather?.data.values.temperature || 0
-                )[temperatureUnit as keyof typeof convertTemperature]
-              }
-              {temperatureUnit}
-            </p>
-          </div>
-        </div>
+        <p
+          className="text-6xl font-bold text-primary-foreground"
+          aria-label={`Current temperature: ${temperature}${temperatureUnit}`}
+        >
+          {temperature}
+          {temperatureUnit}
+        </p>
       </div>
 
       <div className="flex items-center justify-center">

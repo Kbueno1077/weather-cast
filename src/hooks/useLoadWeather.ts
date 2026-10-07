@@ -1,140 +1,111 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { reverseGeocode } from "@/services/geocode";
+import { fetchWeatherData } from "@/services/Weather/WeatherApi";
 import { useWeatherStore } from "@/store/zustand";
-import { loadWeather } from "@/services/loadWeather"; // Import the new function
+import { isWeatherFailure } from "@/types/weather";
+import { coordToString, hasCoords, parseCoord } from "@/utils/utilities";
+import { useQuery } from "@tanstack/react-query";
 
-interface UseFetchDataOptions<T> {
-  initialData?: T | null;
-  enabled?: boolean;
-  queryKeys?: unknown[];
-}
-
-export function useLoadWeather<T = unknown>(
-  options: UseFetchDataOptions<T> = {}
-) {
-  const { initialData = null, enabled = true, queryKeys = [] } = options;
-  const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<T | null>(initialData);
-  const [error, setError] = useState<string>("");
-
-  const currentLocation = useWeatherStore((state) => state.currentCity);
-  const locationPermission = useWeatherStore(
-    (state) => state.locationPermission
-  );
-  const fullQueryKey = ["weather", ...queryKeys];
-
-  const queryFn = async () => {
-    if (!enabled) return null;
-    setIsLoading(true);
-
-    try {
-      let coords = currentLocation;
-
-      if (!coords?.latitude || !coords?.longitude) {
-        coords = await getGeolocation(locationPermission);
-        const nominatimData = await fetchNominatimData(coords);
-        if (nominatimData)
-          coords = { ...coords, ...getNominatimAddress(nominatimData) };
-      }
-
-      const request = new Request(
-        `${window.location.origin}?${new URLSearchParams({
-          latitude: coords.latitude.toString(),
-          longitude: coords.longitude.toString(),
-        })}`
-      );
-
-      const weatherData = await loadWeather(request);
-
-      if (!weatherData || (weatherData.error && weatherData.code === 429001))
-        throw new Error("Error fetching weather data");
-
-      useWeatherStore.getState().setStoreFromData(weatherData);
-      setData(weatherData as T);
-      setError("");
-      return weatherData;
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load weather data";
-
-      if (errorMessage === "Rate limit reached. Please try again later.") {
-        setError("Rate limit reached. Please try again later.");
-      } else {
-        setError(errorMessage);
-      }
-
-      setError(errorMessage);
-      return null;
-    } finally {
-      setIsLoading(false);
+function permissionMessage(permission: "denied" | "accepted" | "N/A") {
+  switch (permission) {
+    case "accepted":
+      return "";
+    case "denied":
+      return "Permission denied by user";
+    case "N/A":
+      return "Location access is required";
+    default: {
+      const unreachable: never = permission;
+      return unreachable;
     }
-  };
-
-  const query = useQuery({
-    queryKey: fullQueryKey,
-    queryFn,
-    enabled,
-    refetchOnWindowFocus: false,
-    staleTime: 60 * 60 * 1000,
-  });
-
-  const mutation = useMutation({
-    mutationFn: queryFn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["weather"] }),
-  });
-
-  return {
-    data,
-    isLoading,
-    error,
-    refetch: query.refetch,
-    mutate: mutation.mutate,
-  };
+  }
 }
 
-// Helper functions
-async function getGeolocation(permission: string) {
-  if (!navigator.geolocation) throw new Error("Geolocation not supported");
-  if (permission !== "accepted") throw new Error("Permission denied by user");
+function isGeoError(error: unknown): error is GeolocationPositionError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "number"
+  );
+}
 
-  const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+function geolocationMessage(error: GeolocationPositionError) {
+  switch (error.code) {
+    case error.PERMISSION_DENIED:
+      return "Permission denied by user";
+    case error.POSITION_UNAVAILABLE:
+      return "Location information unavailable";
+    case error.TIMEOUT:
+      return "Location request timed out";
+    default:
+      return "Location information unavailable";
+  }
+}
+
+async function getGeolocation() {
+  if (!navigator.geolocation) throw new Error("Geolocation not supported");
+
+  const position = await new Promise<GeolocationPosition>((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, {
       timeout: 10000,
-      maximumAge: 0,
+      maximumAge: 60_000,
     });
+  }).catch((error: unknown) => {
+    if (isGeoError(error)) throw new Error(geolocationMessage(error));
+    throw new Error("Location information unavailable");
   });
 
-  return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-}
-
-async function fetchNominatimData(coords: {
-  latitude: number;
-  longitude: number;
-}) {
-  const response = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`
-  );
-  return response.json();
-}
-
-interface NominatimAddress {
-  city?: string;
-  state?: string;
-  country_code?: string;
-  country?: string;
-}
-
-interface NominatimResponse {
-  address?: NominatimAddress;
-}
-
-function getNominatimAddress(data: NominatimResponse) {
-  const address = data.address || {};
   return {
-    city: address.city || "",
-    state: address.state || "",
-    countryCode: address.country_code || "",
-    countryName: address.country || "",
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+  };
+}
+
+export function useLoadWeather() {
+  const locationPermission = useWeatherStore((state) => state.locationPermission);
+
+  const query = useQuery({
+    queryKey: ["weather", locationPermission],
+    queryFn: async () => {
+      const store = useWeatherStore.getState();
+      let city = store.currentCity;
+
+      if (!hasCoords(city)) {
+        const message = permissionMessage(store.locationPermission);
+        if (message) throw new Error(message);
+
+        const coords = await getGeolocation();
+        const place = await reverseGeocode(coords.latitude, coords.longitude);
+        city = {
+          city: place.name,
+          state: place.state,
+          country: place.countryCode,
+          countryName: place.countryName,
+          latitude: coordToString(coords.latitude),
+          longitude: coordToString(coords.longitude),
+        };
+        useWeatherStore.setState({ currentCity: city });
+      }
+
+      const latitude = coordToString(city?.latitude);
+      const longitude = coordToString(city?.longitude);
+      if (parseCoord(latitude) == null || parseCoord(longitude) == null) {
+        throw new Error("Missing latitude or longitude");
+      }
+
+      const weather = await fetchWeatherData(latitude, longitude);
+      if (isWeatherFailure(weather)) throw new Error(weather.message);
+
+      store.setStoreFromData(weather);
+      return weather;
+    },
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  return {
+    isLoading: query.isPending,
+    error: query.error instanceof Error ? query.error.message : "",
+    refetch: query.refetch,
   };
 }

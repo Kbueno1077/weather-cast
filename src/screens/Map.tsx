@@ -1,139 +1,106 @@
+import Search from "@/components/Search/Search";
 import BoxWrapper from "@/components/ui/BoxWrapper/BoxWrapper";
-import { Loading } from "@/components/ui/Loading/Loading";
 import { useWeatherStore } from "@/store/zustand";
+import { parseCoord } from "@/utils/utilities";
 import { weatherDataFields } from "@/utils/weatherMaps";
-import { Autocomplete, AutocompleteItem, Button } from "@nextui-org/react";
+import { Button } from "@heroui/react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 
 export default function Map() {
-  const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const weatherLayerRef = useRef(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const weatherLayerRef = useRef<L.TileLayer | null>(null);
+  const currentCity = useWeatherStore((state) => state.currentCity);
+  const [selectedField, setSelectedField] = useState(weatherDataFields[0]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [selectedField, setSelectedField] = useState({
-    key: "temperature",
-    label: "Temperature",
-  });
+  const latitude = parseCoord(currentCity?.latitude);
+  const longitude = parseCoord(currentCity?.longitude);
 
-  const { currentCity } = useWeatherStore((state) => state);
-  const API_KEY = import.meta.env.VITE_WHEATHER_API_KEY;
-
-  // Initialize map
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current || !currentCity) return;
+    if (!mapRef.current || latitude == null || longitude == null) return;
 
-    const { latitude, longitude } = currentCity;
-
-    // Create map instance
-    mapInstanceRef.current = L.map(mapRef.current, {
+    const map = L.map(mapRef.current, {
       center: [latitude, longitude],
-      zoom: 10,
-      dragging: false,
-      touchZoom: false,
-      doubleClickZoom: false,
-      scrollWheelZoom: false,
-      boxZoom: false,
-      keyboard: false,
-      zoomControl: false,
+      zoom: 8,
+      scrollWheelZoom: true,
     });
+    mapInstanceRef.current = map;
 
-    // Add base tile layer
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(mapInstanceRef.current);
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
 
-    // Initial weather layer load
-    loadWeatherLayer();
-
-    // Cleanup
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
+      map.remove();
+      mapInstanceRef.current = null;
+      weatherLayerRef.current = null;
     };
-  }, [currentCity]);
+  }, [latitude, longitude]);
 
-  // Function to load weather layer
-  const loadWeatherLayer = () => {
-    if (!mapInstanceRef.current || !currentCity) return;
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !selectedField) return;
 
-    setIsLoading(true);
-    const timestamp = new Date().toISOString();
-
-    // Remove existing weather layer if it exists
     if (weatherLayerRef.current) {
-      mapInstanceRef.current.removeLayer(weatherLayerRef.current);
+      map.removeLayer(weatherLayerRef.current);
     }
 
-    try {
-      // Create new weather layer
-      weatherLayerRef.current = L.tileLayer(
-        `https://api.tomorrow.io/v4/map/tile/{z}/{x}/{y}/${selectedField.key}/${timestamp}.png?apikey=${API_KEY}`,
-        {
-          attribution:
-            '&copy; <a href="https://www.tomorrow.io/weather-api">Powered by Tomorrow.io</a>',
-        }
-      ).addTo(mapInstanceRef.current);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle field selection change
-  const handleFieldChange = (key) => {
-    const selected = weatherDataFields.find((field) => field.key === key);
-    if (selected) {
-      setSelectedField(selected);
-      loadWeatherLayer();
-    }
-  };
-
-  if (error) {
-    return <div className="text-red-500 p-4">Error loading map: {error}</div>;
-  }
+    const layer = L.tileLayer(
+      `/api/map-tile?z={z}&x={x}&y={y}&field=${encodeURIComponent(selectedField.key)}`,
+      {
+        attribution:
+          '&copy; <a href="https://www.tomorrow.io/weather-api">Tomorrow.io</a>',
+      }
+    );
+    layer.addTo(map);
+    weatherLayerRef.current = layer;
+  }, [selectedField, latitude, longitude, refreshKey]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-8rem)] sm:h-[calc(100vh-2rem)] w-full">
-      <BoxWrapper className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-8rem)] sm:h-[calc(100vh-2rem)] w-full">
-        <div ref={mapRef} className="h-full w-full rounded-lg relative">
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/10 z-[999]">
-              <Loading />
-            </div>
-          )}
+    <div className="flex flex-col gap-4 h-[calc(100vh-8rem)] sm:h-[calc(100vh-2rem)] w-full">
+      <Search />
+
+      {latitude == null || longitude == null ? (
+        <BoxWrapper className="w-full">
+          <p>Search for a city to open the weather map.</p>
+        </BoxWrapper>
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1 w-full">
+          <BoxWrapper className="h-full w-full min-h-[320px]">
+            <div ref={mapRef} className="h-full w-full rounded-lg" />
+          </BoxWrapper>
+
+          <div className="flex flex-col gap-4 w-full lg:w-72 lg:shrink-0 self-start">
+            <label className="flex flex-col gap-2 text-sm">
+              Data field
+              <select
+                className="bg-primary text-primary-foreground rounded-xl border border-white/15 px-3 py-2"
+                value={selectedField.key}
+                onChange={(event) => {
+                  const selected = weatherDataFields.find(
+                    (field) => field.key === event.target.value
+                  );
+                  if (selected) setSelectedField(selected);
+                }}
+              >
+                {weatherDataFields.map((field) => (
+                  <option key={field.key} value={field.key}>
+                    {field.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <Button color="primary" onPress={() => setRefreshKey((value) => value + 1)}>
+              Update map
+            </Button>
+          </div>
         </div>
-      </BoxWrapper>
-
-      <div className="flex flex-col gap-4 w-full lg:w-fit">
-        <Autocomplete
-          className="w-full lg:max-w-sm"
-          defaultItems={weatherDataFields}
-          label="Data Field"
-          placeholder="Search a data field"
-          defaultSelectedKey={selectedField.key}
-          onSelectionChange={handleFieldChange}
-        >
-          {(item) => (
-            <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>
-          )}
-        </Autocomplete>
-
-        <Button
-          color="primary"
-          className="w-full lg:max-w-sm"
-          onPress={loadWeatherLayer}
-        >
-          Update Map
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,120 +1,97 @@
-import { Button, Switch } from "@nextui-org/react";
+import Search from "@/components/Search/Search";
 import { useWeatherStore } from "@/store/zustand";
+import { Button, Switch } from "@heroui/react";
+
+const copy: Record<string, string> = {
+  "Error fetching weather data":
+    "The weather service is busy right now. Wait a bit, then try again.",
+  "Rate limit reached. Please try again later.":
+    "The weather service is busy right now. Wait a bit, then try again.",
+  "Geolocation not supported":
+    "This browser cannot share your location. Search for a city instead.",
+  "Permission denied by browser":
+    "Location access is blocked in the browser settings.",
+  "Location permission denied":
+    "Location access was denied. Enable it in the browser settings, or search for a city.",
+  "Location information unavailable":
+    "Your location could not be determined. Check the device location settings, or search for a city.",
+  "Location request timed out":
+    "Finding your location took too long. Check your connection and try again.",
+  "Missing latitude or longitude":
+    "This place has no coordinates. Try another search.",
+  "Weather service is not configured":
+    "The weather service key is missing on the server.",
+  "Weather service request failed":
+    "The weather service could not be reached. Check your connection and try again.",
+};
 
 const DisplayError = ({ error }: { error: string }) => {
-  const { locationPermission, setLocationPermission } = useWeatherStore(
-    (state) => state
-  );
+  const locationPermission = useWeatherStore((state) => state.locationPermission);
+  const setLocationPermission = useWeatherStore((state) => state.setLocationPermission);
+  const needsPermission =
+    error === "Permission denied by user" || error === "Location access is required";
 
-  const handlePermission = async () => {
+  const handlePermission = async (enabled: boolean) => {
+    if (!enabled) {
+      setLocationPermission("denied");
+      return;
+    }
+
     try {
       const permission = await navigator.permissions.query({
-        name: "geolocation" as PermissionName,
+        name: "geolocation",
       });
 
       if (permission.state === "denied") {
-        throw new Error("Permission denied by browser");
+        setLocationPermission("denied");
+        return;
       }
 
-      await new Promise((resolve, reject) => {
+      await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject);
       });
 
       setLocationPermission("accepted");
-    } catch (error) {
-      setLocationPermission(error.code);
-      console.error("Location permission error:", error);
+    } catch {
+      setLocationPermission("denied");
     }
   };
 
   return (
     <div className="h-screen w-full flex sm:justify-center items-center flex-col gap-10">
       <h1 className="text-3xl font-bold text-primary-foreground">
-        Sorry, we could not load your information
+        Weather could not be loaded
       </h1>
 
-      <div className="w-full max-w-[550px]">
-        {error === "Error fetching weather data" && (
-          <p className="text-2xl">
-            Sorry, we encounter and issue loading information, it might have to
-            due to the high traffic of data during the last hour as this is a
-            small project not intended for large usage, try again within the
-            next hour
-          </p>
-        )}
-
-        {error === "Rate limit reached. Please try again later." && (
-          <p className="text-2xl">
-            Sorry, we encounter and issue loading information, it might have to
-            due to the high traffic of data during the last hour as this is a
-            small project not intended for large usage, try again within the
-            next hour
-          </p>
-        )}
-
-        {error === "Geolocation not supported" && (
-          <p className="text-2xl">
-            Geolocation is not supported by your browser. Please use a different
-            browser or enable location access in your browser settings.
-          </p>
-        )}
-
-        {error === "Permission denied by user" && (
+      <div className="w-full max-w-[550px] flex flex-col gap-6">
+        <Search />
+        {needsPermission ? (
           <div className="flex flex-col gap-4">
             <p className="text-2xl">
-              Location permissions are denied. Enable location access to get
-              local weather information.
+              {error === "Location access is required"
+                ? "Allow location access for local weather, or search for a city."
+                : "Location access is denied. Turn it on to load local weather, or search for a city."}
             </p>
             <div className="flex justify-between items-center p-4 bg-content1 rounded-lg">
               <div className="flex flex-col gap-1">
-                <h2 className="font-bold text-primary-foreground">
-                  Location Permission
-                </h2>
+                <h2 className="font-bold text-primary-foreground">Location permission</h2>
                 <p className="text-sm text-default-500">
-                  Allow access to your location for local weather and try again
+                  Used only to find the weather where you are
                 </p>
               </div>
               <Switch
                 isSelected={locationPermission === "accepted"}
-                onValueChange={handlePermission}
+                onValueChange={(selected) => {
+                  void handlePermission(selected);
+                }}
                 color="success"
                 aria-label="Location permission toggle"
               />
             </div>
           </div>
-        )}
-
-        {error === "Permission denied by browser" && (
+        ) : (
           <p className="text-2xl">
-            Location permission denied in browser settings
-          </p>
-        )}
-
-        {error === "Location permission denied" && (
-          <p className="text-2xl">
-            Location access was denied. Please enable location permissions in
-            your browser settings.
-          </p>
-        )}
-
-        {error === "Location information unavailable" && (
-          <p className="text-2xl">
-            Unable to retrieve your location. Please check your device&apos;s
-            location settings.
-          </p>
-        )}
-
-        {error === "Location request timed out" && (
-          <p className="text-2xl">
-            Location request took too long. Please check your connection and try
-            again.
-          </p>
-        )}
-
-        {error === "Network response was not ok" && (
-          <p className="text-2xl">
-            There was a problem connecting to the weather service. Please check
-            your internet connection and try again.
+            {copy[error] ?? error}
           </p>
         )}
       </div>
@@ -126,7 +103,7 @@ const DisplayError = ({ error }: { error: string }) => {
         className="w-full sm:w-[220px]"
         onPress={() => window.location.reload()}
       >
-        Try Again
+        Try again
       </Button>
     </div>
   );

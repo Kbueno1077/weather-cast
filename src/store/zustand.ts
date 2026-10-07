@@ -1,11 +1,14 @@
-import { loadWeather } from "@/services/loadWeather";
+import { queryClient } from "@/services/queryClient";
+import { fetchWeatherData } from "@/services/Weather/WeatherApi";
 import {
   ForecastType,
   CurrentWeatherType,
   UnitSettings,
   CurrentCityType,
   DailyForecastType,
-} from "@/types/OpenWeatherTypes";
+  isWeatherFailure,
+} from "@/types/weather";
+import { coordToString, sameCity } from "@/utils/utilities";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -13,24 +16,8 @@ export type InitStateType = {
   currentWeather: CurrentWeatherType | null;
   hourlyWeather: ForecastType | null;
   dailyWeather: DailyForecastType | null;
-  currentCity: {
-    city: string | null;
-    state?: string | null;
-    country?: string | null;
-    countryName?: string | null;
-    latitude?: string | null;
-    longitude?: string | null;
-  } | null;
-
-  savedCities: {
-    city: string;
-    state?: string;
-    country?: string;
-    countryName?: string;
-    latitude?: string;
-    longitude?: string;
-  }[];
-
+  currentCity: CurrentCityType | null;
+  savedCities: CurrentCityType[];
   locationPermission: "denied" | "accepted" | "N/A";
   error: boolean;
   message: string;
@@ -43,25 +30,20 @@ export type DefaultStateType = InitStateType & {
 };
 
 export type WeatherActions = {
-  changeCurrentCity: (cityData: {
-    city: string;
-    countryCode?: string;
-    state?: string;
-    countryName?: string;
+  changeCurrentCity: (cityData: CurrentCityType) => Promise<void>;
+  setStoreFromData: (data: {
+    currentWeather: CurrentWeatherType;
+    hourlyWeather: ForecastType;
+    dailyWeather: DailyForecastType;
   }) => void;
-
-  setStoreFromData: (data: object) => void;
-  setCurrentWeather: (currentWeather: CurrentWeatherType) => void;
-  setDailyWeather: (dailyWeather: DailyForecastType) => void;
-  setHourlyWeather: (hourlyWeather: ForecastType) => void;
-
-  changeSettingsUnit: (
-    key: keyof DefaultStateType["unitSettings"],
-    unit: string | boolean
+  changeSettingsUnit: <K extends keyof UnitSettings>(
+    key: K,
+    unit: UnitSettings[K]
   ) => void;
-
   addSavedCity: (cityData: CurrentCityType) => void;
-  removeSavedCity: (city: string) => void;
+  removeSavedCity: (
+    city: Pick<CurrentCityType, "city" | "state" | "country">
+  ) => void;
   removeAll: () => void;
   setLocationPermission: (permission: "denied" | "accepted" | "N/A") => void;
 };
@@ -81,78 +63,77 @@ export const defaultState: InitStateType = {
   isLoading: false,
 };
 
+const defaultUnits: UnitSettings = {
+  temperatureUnit: "°C",
+  windSpeedUnit: "km/h",
+  pressureUnit: "hPa",
+  precipitationUnit: "mm",
+  distanceUnit: "km",
+  is12Hour: true,
+};
+
 export const useWeatherStore = create<WeatherStore>()(
   persist(
     (set) => ({
-      // STATES
       ...defaultState,
+      unitSettings: defaultUnits,
 
-      unitSettings: {
-        temperatureUnit: "°C",
-        windSpeedUnit: "km/h",
-        pressureUnit: "hPa",
-        precipitationUnit: "mm",
-        distanceUnit: "km",
-        is12Hour: true,
-      },
+      setStoreFromData: (data) =>
+        set({
+          currentWeather: data.currentWeather,
+          hourlyWeather: data.hourlyWeather,
+          dailyWeather: data.dailyWeather,
+          error: false,
+          message: "",
+          code: 200,
+          isLoading: false,
+        }),
 
-      // SETS
-      setStoreFromData: (data: object) =>
-        set((state) => ({ ...state, ...data })),
-      setCurrentWeather: (currentWeather: CurrentWeatherType) =>
-        set({ currentWeather }),
-      setDailyWeather: (dailyWeather: DailyForecastType) =>
-        set({ dailyWeather }),
-      setHourlyWeather: (hourlyWeather: ForecastType) => set({ hourlyWeather }),
+      changeCurrentCity: async (cityData) => {
+        const latitude = coordToString(cityData.latitude);
+        const longitude = coordToString(cityData.longitude);
+        const currentCity: CurrentCityType = {
+          ...cityData,
+          latitude,
+          longitude,
+        };
 
-      // ACTIONS
-      changeCurrentCity: async (cityData: {
-        city: string;
-        countryCode?: string;
-        state?: string;
-        countryName?: string;
-        latitude?: string;
-        longitude?: string;
-      }) => {
-        set({ isLoading: true });
+        if (!latitude || !longitude) {
+          set({
+            isLoading: false,
+            error: true,
+            code: 400,
+            message: "That place is missing coordinates",
+            currentCity,
+          });
+          return;
+        }
 
-        const request = new Request(
-          `${window.location.origin}?${new URLSearchParams({
-            city: cityData.city,
-            state: cityData.state || "",
-            countryCode: cityData.countryCode || "",
-            latitude: cityData.latitude || "",
-            longitude: cityData.longitude || "",
-          })}`
-        );
+        set({ isLoading: true, error: false, message: "" });
+        const data = await fetchWeatherData(latitude, longitude);
 
-        const data = await loadWeather(request);
-        console.log("🚀 ~ data:", data);
-
-        if (!data.error) {
-          data.error = false;
-          data.code = 200;
-          data.message = "";
+        if (isWeatherFailure(data)) {
+          set({
+            isLoading: false,
+            error: true,
+            code: data.code,
+            message: data.message,
+            currentCity,
+          });
+          return;
         }
 
         set({
           ...data,
           isLoading: false,
-          currentCity: {
-            city: cityData.city,
-            state: cityData.state,
-            country: cityData.countryCode,
-            countryName: cityData.countryName,
-            latitude: cityData.latitude,
-            longitude: cityData.longitude,
-          },
+          error: false,
+          code: 200,
+          message: "",
+          currentCity,
         });
       },
 
-      changeSettingsUnit: (
-        key: keyof DefaultStateType["unitSettings"],
-        unit: string | boolean
-      ) =>
+      changeSettingsUnit: (key, unit) =>
         set((state) => ({
           unitSettings: {
             ...state.unitSettings,
@@ -160,38 +141,44 @@ export const useWeatherStore = create<WeatherStore>()(
           },
         })),
 
-      addSavedCity: (cityData: CurrentCityType) =>
+      addSavedCity: (cityData) =>
+        set((state) => {
+          const nextCity: CurrentCityType = {
+            ...cityData,
+            latitude: coordToString(cityData.latitude),
+            longitude: coordToString(cityData.longitude),
+          };
+          if (state.savedCities.some((saved) => sameCity(saved, nextCity))) {
+            return state;
+          }
+          return { savedCities: [...state.savedCities, nextCity] };
+        }),
+
+      removeSavedCity: (city) =>
         set((state) => ({
-          savedCities: [...state.savedCities, cityData],
+          savedCities: state.savedCities.filter((saved) => !sameCity(saved, city)),
         })),
-      removeSavedCity: (city: string) =>
+
+      removeAll: () => {
+        queryClient.removeQueries({ queryKey: ["weather"] });
         set((state) => ({
-          savedCities: state.savedCities.filter((c) => c.city !== city),
-        })),
-      removeAll: () =>
-        set((state) => ({ ...defaultState, unitSettings: state.unitSettings })),
-      setLocationPermission: (permission: "denied" | "accepted" | "N/A") =>
+          ...defaultState,
+          unitSettings: state.unitSettings,
+          locationPermission: state.locationPermission,
+        }));
+      },
+
+      setLocationPermission: (permission) =>
         set({ locationPermission: permission }),
     }),
-
-    // PERSIST
     {
-      name: "weather-storage", // unique name for the storage
+      name: "weather-storage",
       partialize: (state) => ({
-        ...state,
+        unitSettings: state.unitSettings,
+        savedCities: state.savedCities,
+        currentCity: state.currentCity,
+        locationPermission: state.locationPermission,
       }),
     }
   )
 );
-
-export const getCurrentUnitSettings = (
-  key: keyof DefaultStateType["unitSettings"]
-) => {
-  if (typeof window !== "undefined") {
-    const storedSettings = window.localStorage.getItem("weather-storage");
-    if (storedSettings) {
-      const state = JSON.parse(storedSettings);
-      return state.state.unitSettings[key];
-    }
-  }
-};

@@ -1,21 +1,17 @@
-interface CacheEntry {
-  data: unknown;
-  timestamp: number;
-}
+import type { WeatherSuccess } from "@/types/weather";
 
-interface CacheData {
-  isStale?: boolean;
-  [key: string]: unknown;
+interface CacheEntry {
+  data: WeatherSuccess;
+  timestamp: number;
 }
 
 class WeatherCacheService {
   private cache: Record<string, CacheEntry> = {};
-  private readonly CACHE_DURATION = 60 * 60 * 1000; // Increased to 1 hour
-  private readonly MAX_CACHE_SIZE = 1000;
+  private readonly CACHE_DURATION = 30 * 60 * 1000;
+  private readonly MAX_CACHE_SIZE = 20;
   private readonly STORAGE_KEY = "weather_cache";
 
   constructor() {
-    // Load cache from localStorage on initialization
     this.loadFromStorage();
   }
 
@@ -23,10 +19,11 @@ class WeatherCacheService {
     try {
       const savedCache = localStorage.getItem(this.STORAGE_KEY);
       if (savedCache) {
-        this.cache = JSON.parse(savedCache);
+        this.cache = JSON.parse(savedCache) as Record<string, CacheEntry>;
       }
     } catch (error) {
       console.error("Error loading cache from storage:", error);
+      this.cache = {};
     }
   }
 
@@ -39,42 +36,20 @@ class WeatherCacheService {
   }
 
   generateCacheKey(latitude: string, longitude: string) {
-    // Round coordinates to reduce slight variations
     const roundedLat = Number(latitude).toFixed(3);
     const roundedLon = Number(longitude).toFixed(3);
-    return `---${roundedLat}-${roundedLon}`;
+    return `${roundedLat},${roundedLon}`;
   }
 
-  get(cacheKey: string): CacheData | null {
+  get(cacheKey: string): WeatherSuccess | null {
     this.cleanupExpiredEntries();
     const cachedEntry = this.cache[cacheKey];
-    const currentTime = Date.now();
-
-    if (cachedEntry) {
-      const age = currentTime - cachedEntry.timestamp;
-
-      // If data is fresh enough, return it
-      if (age < this.CACHE_DURATION) {
-        console.log(
-          "Returning cached weather data, age:",
-          Math.round(age / 1000 / 60),
-          "minutes"
-        );
-        return cachedEntry.data as CacheData;
-      }
-
-      // If data is stale but we have it, still return it but trigger a background refresh
-      console.log("Returning stale cached data, will refresh in background");
-      return {
-        ...(cachedEntry.data as object),
-        isStale: true,
-      };
-    }
-
-    return null;
+    if (!cachedEntry) return null;
+    if (Date.now() - cachedEntry.timestamp >= this.CACHE_DURATION) return null;
+    return cachedEntry.data;
   }
 
-  set(cacheKey: string, data: unknown) {
+  set(cacheKey: string, data: WeatherSuccess) {
     this.cleanupExpiredEntries();
 
     if (Object.keys(this.cache).length >= this.MAX_CACHE_SIZE) {
@@ -95,27 +70,21 @@ class WeatherCacheService {
     let changed = false;
 
     Object.keys(this.cache).forEach((key) => {
-      if (currentTime - this.cache[key].timestamp >= this.CACHE_DURATION * 2) {
+      if (currentTime - this.cache[key].timestamp >= this.CACHE_DURATION) {
         delete this.cache[key];
         changed = true;
       }
     });
 
-    if (changed) {
-      this.saveToStorage();
-    }
+    if (changed) this.saveToStorage();
   }
 
   private findOldestCacheKey(): string | null {
-    if (Object.keys(this.cache).length === 0) return null;
-    return Object.entries(this.cache).reduce((oldest, current) =>
+    const entries = Object.entries(this.cache);
+    if (entries.length === 0) return null;
+    return entries.reduce((oldest, current) =>
       current[1].timestamp < oldest[1].timestamp ? current : oldest
     )[0];
-  }
-
-  clear() {
-    this.cache = {};
-    localStorage.removeItem(this.STORAGE_KEY);
   }
 }
 

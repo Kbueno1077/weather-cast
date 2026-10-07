@@ -1,4 +1,4 @@
-import { Button } from "@nextui-org/react";
+import { Button } from "@heroui/react";
 import { CiMap } from "react-icons/ci";
 import { MdOutlineDisplaySettings } from "react-icons/md";
 import { PiCityLight } from "react-icons/pi";

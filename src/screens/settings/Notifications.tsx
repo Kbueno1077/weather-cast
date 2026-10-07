@@ -1,5 +1,5 @@
 import BoxWrapper from "@/components/ui/BoxWrapper/BoxWrapper";
-import { Switch } from "@nextui-org/react";
+import { Switch } from "@heroui/react";
 
 function Notifications() {
   return (
@@ -7,12 +7,12 @@ function Notifications() {
       <div className="flex justify-between items-center">
         <div className="flex flex-col gap-1">
           <h2 className="font-bold text-primary-foreground">Notifications</h2>
-          <p>Be aware of the weather</p>
+          <p>Alerts are not available yet</p>
         </div>
 
         <Switch
-          disabled={true}
-          aria-label="Automatic updates"
+          isDisabled
+          aria-label="Weather notifications, not available yet"
           color="success"
         />
       </div>

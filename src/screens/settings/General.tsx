@@ -10,7 +10,7 @@ import {
   Switch,
   useDisclosure,
   Divider,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { BsTrash3 } from "react-icons/bs";
 
 function General() {
@@ -43,9 +43,8 @@ function General() {
       });
 
       setLocationPermission("accepted");
-    } catch (error) {
-      setLocationPermission(error.message);
-      console.error("Location permission error:", error);
+    } catch {
+      setLocationPermission("denied");
     }
   };
 
