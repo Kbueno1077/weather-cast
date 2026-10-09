@@ -23,7 +23,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-4">
-      <div className="w-full flex flex-col items-start justify-start gap-4">
+      <div className="stagger w-full flex flex-col items-start justify-start gap-4">
         <Search />
 
         <WeatherNow />
@@ -31,7 +31,7 @@ export default function Home() {
         <OtherDetails />
       </div>
 
-      <div>
+      <div className="stagger w-full lg:w-[360px] lg:shrink-0">
         <Weather7DaysForecast />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import { dispatchApi } from "./server/dispatch.ts";
@@ -62,7 +63,7 @@ function weatherDevApi(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), weatherDevApi()],
+  plugins: [react(), tailwindcss(), weatherDevApi()],
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "./src"),

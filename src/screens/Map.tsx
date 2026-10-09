@@ -7,6 +7,7 @@ import { Button } from "@heroui/react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
+import { LuChevronDown, LuMap, LuRefreshCw } from "react-icons/lu";
 
 export default function Map() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -65,40 +66,61 @@ export default function Map() {
       <Search />
 
       {latitude == null || longitude == null ? (
-        <BoxWrapper className="w-full">
-          <p>Search for a city to open the weather map.</p>
+        <BoxWrapper className="flex w-full items-center gap-3">
+          <LuMap aria-hidden="true" size={18} />
+          <p className="text-sm">Search for a city to open the weather map.</p>
         </BoxWrapper>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 min-h-0 flex-1 w-full">
-          <BoxWrapper className="h-full w-full min-h-[320px]">
-            <div ref={mapRef} className="h-full w-full rounded-lg" />
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-4 lg:flex-row">
+          <BoxWrapper className="h-full min-h-[320px] w-full overflow-hidden p-2">
+            <div ref={mapRef} className="h-full w-full rounded-2xl" />
           </BoxWrapper>
 
-          <div className="flex flex-col gap-4 w-full lg:w-72 lg:shrink-0 self-start">
-            <label className="flex flex-col gap-2 text-sm">
+          <BoxWrapper className="flex w-full flex-col gap-4 self-start lg:w-72 lg:shrink-0">
+            <div>
+              <p className="eyebrow">Map layer</p>
+              <p className="mt-1 font-display text-lg font-semibold text-primary-foreground">
+                {selectedField.label}
+              </p>
+              {currentCity?.city && <p className="text-sm">Around {currentCity.city}</p>}
+            </div>
+
+            <label className="flex flex-col gap-2 text-xs font-medium">
               Data field
-              <select
-                className="bg-primary text-primary-foreground rounded-xl border border-white/15 px-3 py-2"
-                value={selectedField.key}
-                onChange={(event) => {
-                  const selected = weatherDataFields.find(
-                    (field) => field.key === event.target.value
-                  );
-                  if (selected) setSelectedField(selected);
-                }}
-              >
-                {weatherDataFields.map((field) => (
-                  <option key={field.key} value={field.key}>
-                    {field.label}
-                  </option>
-                ))}
-              </select>
+              <span className="relative">
+                <select
+                  className="h-11 w-full appearance-none rounded-xl border border-line bg-background/60 px-3 pr-9 text-sm text-primary-foreground transition-colors outline-none focus-visible:border-accent/60"
+                  value={selectedField.key}
+                  onChange={(event) => {
+                    const selected = weatherDataFields.find(
+                      (field) => field.key === event.target.value
+                    );
+                    if (selected) setSelectedField(selected);
+                  }}
+                >
+                  {weatherDataFields.map((field) => (
+                    <option key={field.key} value={field.key}>
+                      {field.label}
+                    </option>
+                  ))}
+                </select>
+                <LuChevronDown
+                  aria-hidden="true"
+                  size={16}
+                  className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
+                />
+              </span>
             </label>
 
-            <Button color="primary" onPress={() => setRefreshKey((value) => value + 1)}>
+            <Button
+              radius="lg"
+              className="bg-accent font-medium text-white"
+              startContent={<LuRefreshCw aria-hidden="true" size={15} />}
+              onPress={() => setRefreshKey((value) => value + 1)}
+            >
               Update map
             </Button>
-          </div>
+          </BoxWrapper>
         </div>
       )}
     </div>

@@ -16,12 +16,12 @@ export default function Cities() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-4">
-      <div className="w-full flex flex-col items-start justify-start gap-4">
+      <div className="stagger w-full flex flex-col items-start justify-start gap-4">
         <Search />
         <AddedCities />
       </div>
 
-      <div className="w-full flex flex-col items-start justify-start gap-4">
+      <div className="stagger w-full flex flex-col items-start justify-start gap-4">
         {(isLoading || bootstrapping) && !currentWeather && <Loading compact />}
         {!isLoading && !bootstrapping && error && (
           <p className="text-lg">{message}</p>

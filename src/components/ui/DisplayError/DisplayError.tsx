@@ -1,6 +1,8 @@
 import Search from "@/components/Search/Search";
+import { switchClassNames } from "@/components/ui/switchStyles";
 import { useWeatherStore } from "@/store/zustand";
 import { Button, Switch } from "@heroui/react";
+import { LuCloudOff, LuLocateFixed, LuRefreshCw } from "react-icons/lu";
 
 const copy: Record<string, string> = {
   "Error fetching weather data":
@@ -58,49 +60,52 @@ const DisplayError = ({ error }: { error: string }) => {
   };
 
   return (
-    <div className="h-screen w-full flex sm:justify-center items-center flex-col gap-10">
-      <h1 className="text-3xl font-bold text-primary-foreground">
-        Weather could not be loaded
-      </h1>
+    <div className="flex min-h-[calc(100vh-8rem)] w-full flex-col items-center justify-center gap-8 py-10 sm:min-h-[calc(100vh-2.5rem)]">
+      <div className="flex max-w-[550px] flex-col items-center gap-4 text-center">
+        <span className="grid size-14 place-items-center rounded-2xl border border-line bg-primary text-accent">
+          <LuCloudOff aria-hidden="true" size={26} />
+        </span>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-primary-foreground sm:text-4xl">
+          Weather could not be loaded
+        </h1>
+        <p className="text-base text-balance">
+          {needsPermission
+            ? error === "Location access is required"
+              ? "Allow location access for local weather, or search for a city."
+              : "Location access is denied. Turn it on to load local weather, or search for a city."
+            : copy[error] ?? error}
+        </p>
+      </div>
 
-      <div className="w-full max-w-[550px] flex flex-col gap-6">
+      <div className="flex w-full max-w-[550px] flex-col gap-4">
         <Search />
-        {needsPermission ? (
-          <div className="flex flex-col gap-4">
-            <p className="text-2xl">
-              {error === "Location access is required"
-                ? "Allow location access for local weather, or search for a city."
-                : "Location access is denied. Turn it on to load local weather, or search for a city."}
-            </p>
-            <div className="flex justify-between items-center p-4 bg-content1 rounded-lg">
-              <div className="flex flex-col gap-1">
-                <h2 className="font-bold text-primary-foreground">Location permission</h2>
-                <p className="text-sm text-default-500">
-                  Used only to find the weather where you are
-                </p>
+        {needsPermission && (
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-primary p-4">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+                <LuLocateFixed aria-hidden="true" size={18} />
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <h2 className="text-sm font-semibold text-primary-foreground">Location permission</h2>
+                <p className="text-sm">Used only to find the weather where you are</p>
               </div>
-              <Switch
-                isSelected={locationPermission === "accepted"}
-                onValueChange={(selected) => {
-                  void handlePermission(selected);
-                }}
-                color="success"
-                aria-label="Location permission toggle"
-              />
             </div>
+            <Switch
+              isSelected={locationPermission === "accepted"}
+              onValueChange={(selected) => {
+                void handlePermission(selected);
+              }}
+              classNames={switchClassNames}
+              aria-label="Location permission toggle"
+            />
           </div>
-        ) : (
-          <p className="text-2xl">
-            {copy[error] ?? error}
-          </p>
         )}
       </div>
 
       <Button
-        fullWidth
-        variant="flat"
-        color="warning"
-        className="w-full sm:w-[220px]"
+        radius="full"
+        className="w-full bg-accent font-medium text-white sm:w-[220px]"
+        startContent={<LuRefreshCw aria-hidden="true" size={15} />}
         onPress={() => window.location.reload()}
       >
         Try again

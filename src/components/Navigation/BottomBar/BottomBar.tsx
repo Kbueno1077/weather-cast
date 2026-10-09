@@ -1,82 +1,45 @@
-import { Button } from "@heroui/react";
-import { CiMap } from "react-icons/ci";
-import { MdOutlineDisplaySettings } from "react-icons/md";
-import { PiCityLight } from "react-icons/pi";
-import { TiWeatherPartlySunny } from "react-icons/ti";
+import { navLinks } from "@/components/Navigation/links";
+import { cn } from "@/utils/cn";
 import { NavLink } from "react-router-dom";
 
 function BottomBar() {
   return (
-    <div
-      className="bg-primary w-full sm:hidden py-3 px-2 fixed bottom-0 h-[70px] z-50 rounded-none"
-      style={{ boxShadow: "0 8px 16px rgba(0, 0, 0, 0.8)" }}
+    <nav
+      aria-label="Main"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-primary/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-16px_40px_-16px_rgb(0_0_0/0.9)] backdrop-blur-xl sm:hidden"
     >
-      <div className="flex justify-center gap-6 items-center w-full ">
-        <NavLink to="/" preventScrollReset={true}>
-          {({ isActive }) => (
-            <Button
-              isIconOnly
-              variant="flat"
-              color={"primary"}
-              size="lg"
-              className={`text-white ${
-                isActive ? "text-primary-foreground" : "text-primary/100"
-              }`}
+      <ul className="mx-auto flex max-w-md items-stretch justify-around px-2">
+        {navLinks.map(({ to, label, icon: Icon }) => (
+          <li key={to}>
+            <NavLink
+              to={to}
+              end={to === "/"}
+              preventScrollReset={true}
+              className={({ isActive }) =>
+                cn(
+                  "relative flex min-w-16 flex-col items-center gap-1 px-3 pt-3 pb-2.5 text-[11px] font-medium transition-colors duration-200",
+                  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent",
+                  isActive ? "text-primary-foreground" : "text-foreground"
+                )
+              }
             >
-              <TiWeatherPartlySunny size={28} />
-            </Button>
-          )}
-        </NavLink>
-
-        <NavLink to="/cities" preventScrollReset={true}>
-          {({ isActive }) => (
-            <Button
-              color={"primary"}
-              isIconOnly
-              variant="flat"
-              size="lg"
-              className={`text-white ${
-                isActive ? "text-primary-foreground" : "text-primary/100"
-              }`}
-            >
-              <PiCityLight size={28} />
-            </Button>
-          )}
-        </NavLink>
-
-        <NavLink to="/map" preventScrollReset={true}>
-          {({ isActive }) => (
-            <Button
-              color={"primary"}
-              isIconOnly
-              variant="flat"
-              size="lg"
-              className={`text-white ${
-                isActive ? "text-primary-foreground" : "text-primary/100"
-              }`}
-            >
-              <CiMap size={28} />
-            </Button>
-          )}
-        </NavLink>
-
-        <NavLink to="/settings" preventScrollReset={true}>
-          {({ isActive }) => (
-            <Button
-              color={"primary"}
-              isIconOnly
-              variant="flat"
-              size="lg"
-              className={`text-white ${
-                isActive ? "text-primary-foreground" : "text-primary/100"
-              }`}
-            >
-              <MdOutlineDisplaySettings size={28} />
-            </Button>
-          )}
-        </NavLink>
-      </div>
-    </div>
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-accent"
+                    />
+                  )}
+                  <Icon size={22} className={isActive ? "text-accent" : undefined} />
+                  {label}
+                </>
+              )}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
