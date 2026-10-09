@@ -1,21 +1,18 @@
 import BoxWrapper from "@/components/ui/BoxWrapper/BoxWrapper";
-import { Switch } from "@nextui-org/react";
+import { Switch } from "@heroui/react";
+import { switchClassNames } from "@/components/ui/switchStyles";
+import SettingRow from "./SettingRow";
 
 function Notifications() {
   return (
-    <BoxWrapper title="Notifications" className="w-full flex flex-col gap-5">
-      <div className="flex justify-between items-center">
-        <div className="flex flex-col gap-1">
-          <h2 className="font-bold text-primary-foreground">Notifications</h2>
-          <p>Be aware of the weather</p>
-        </div>
-
+    <BoxWrapper title="Notifications" className="w-full">
+      <SettingRow title="Weather alerts" description="Alerts are not available yet">
         <Switch
-          disabled={true}
-          aria-label="Automatic updates"
-          color="success"
+          isDisabled
+          classNames={switchClassNames}
+          aria-label="Weather notifications, not available yet"
         />
-      </div>
+      </SettingRow>
     </BoxWrapper>
   );
 }

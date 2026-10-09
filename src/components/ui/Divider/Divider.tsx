@@ -12,8 +12,8 @@ export default function Divider({
   return (
     <div
       className={cn(
-        "bg-[#364259]",
-        orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+        "bg-line",
+        orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
         className
       )}
       role="separator"

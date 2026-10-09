@@ -6,17 +6,24 @@ import DisplayError from "@/components/ui/DisplayError/DisplayError";
 import { Loading } from "@/components/ui/Loading/Loading";
 import WeatherNow from "@/components/WeatherNow/WeatherNow";
 import { useLoadWeather } from "@/hooks/useLoadWeather";
+import { useWeatherStore } from "@/store/zustand";
 
 export default function Home() {
   const { isLoading, error } = useLoadWeather();
+  const currentWeather = useWeatherStore((state) => state.currentWeather);
+  const storeLoading = useWeatherStore((state) => state.isLoading);
+  const storeError = useWeatherStore((state) => state.error);
+  const message = useWeatherStore((state) => state.message);
 
-  if (isLoading) return <Loading />;
+  if ((isLoading || storeLoading) && !currentWeather) return <Loading />;
 
-  if (error) return <DisplayError error={error} />;
+  if (!currentWeather && (error || storeError)) {
+    return <DisplayError error={storeError ? message : error} />;
+  }
 
   return (
     <div className="flex flex-col lg:flex-row gap-4">
-      <div className="w-full flex flex-col items-start justify-start gap-4">
+      <div className="stagger w-full flex flex-col items-start justify-start gap-4">
         <Search />
 
         <WeatherNow />
@@ -24,7 +31,7 @@ export default function Home() {
         <OtherDetails />
       </div>
 
-      <div>
+      <div className="stagger w-full lg:w-[360px] lg:shrink-0">
         <Weather7DaysForecast />
       </div>
     </div>

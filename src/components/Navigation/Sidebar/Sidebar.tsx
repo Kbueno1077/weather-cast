@@ -1,88 +1,55 @@
-import { Button } from "@nextui-org/react";
-import BoxWrapper from "@/components/ui/BoxWrapper/BoxWrapper";
-import { CiMap } from "react-icons/ci";
+import { navLinks } from "@/components/Navigation/links";
+import { cn } from "@/utils/cn";
 import { FaUmbrellaBeach } from "react-icons/fa";
-import { MdOutlineDisplaySettings } from "react-icons/md";
-import { PiCityLight } from "react-icons/pi";
-import { TiWeatherPartlySunny } from "react-icons/ti";
-import { Link, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 function Sidebar() {
-  const location = useLocation();
-
-  // Function to determine text color based on current path
-  const getTextColor = (path: string) => {
-    return location.pathname.startsWith(path) && path !== "/"
-      ? "hsl(var(--primary-foreground))"
-      : location.pathname === path
-      ? "hsl(var(--primary-foreground))"
-      : "hsl(var(--foreground))";
-  };
-
   return (
-    <BoxWrapper className="fixed h-[calc(100vh-2rem)] w-[85px] sm:block hidden px-0">
-      <div className="flex flex-col justify-center items-center">
-        <Link to={"/"}>
-          <Button variant="light" className={`py-10 w-[60px]`}>
-            <div className="p-2 flex flex-col gap-2 items-center justify-center">
-              <FaUmbrellaBeach size={25} />
-            </div>
-          </Button>
-        </Link>
-      </div>
+    <nav
+      aria-label="Main"
+      className="fixed top-5 bottom-5 left-3 z-40 hidden w-[85px] flex-col items-center rounded-3xl border border-line bg-primary py-6 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04),0_24px_48px_-28px_rgb(0_0_0/0.8)] sm:flex"
+    >
+      <Link
+        to="/"
+        aria-label="WeatherCast home"
+        className="mb-10 grid size-12 place-items-center rounded-2xl bg-accent text-white shadow-[0_10px_28px_-10px_rgb(59_130_246/0.9)] transition-transform duration-200 hover:-rotate-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        <FaUmbrellaBeach size={22} />
+      </Link>
 
-      <div className="mt-10 flex flex-col justify-center items-center">
-        <Link to={"/"}>
-          <Button variant="light" className="py-10 w-[60px]">
-            <div className="p-2 flex flex-col gap-2 items-center justify-center">
-              <TiWeatherPartlySunny
-                size={20}
-                style={{ color: getTextColor("/") }}
-              />
-              <h2 className="text-sm" style={{ color: getTextColor("/") }}>
-                Weather
-              </h2>
-            </div>
-          </Button>
-        </Link>
-
-        <Link to={"/cities"}>
-          <Button variant="light" className="py-10 w-[60px]">
-            <div className="flex flex-col gap-2 items-center justify-center">
-              <PiCityLight
-                size={20}
-                style={{ color: getTextColor("/cities") }}
-              />
-              <h2
-                className="text-sm"
-                style={{ color: getTextColor("/cities") }}
-              >
-                Cities
-              </h2>
-            </div>
-          </Button>
-        </Link>
-
-       
-
-        <Link to="/settings">
-          <Button variant="light" className="py-10 w-[60px]">
-            <div className="flex flex-col gap-2 items-center justify-center">
-              <MdOutlineDisplaySettings
-                size={20}
-                style={{ color: getTextColor("/settings") }}
-              />
-              <h2
-                className="text-sm"
-                style={{ color: getTextColor("/settings") }}
-              >
-                Settings
-              </h2>
-            </div>
-          </Button>
-        </Link>
-      </div>
-    </BoxWrapper>
+      <ul className="flex flex-col gap-2">
+        {navLinks.map(({ to, label, icon: Icon }) => (
+          <li key={to}>
+            <NavLink
+              to={to}
+              end={to === "/"}
+              className={({ isActive }) =>
+                cn(
+                  "relative flex w-16 flex-col items-center gap-1.5 rounded-2xl py-3 text-[11px] font-medium tracking-wide transition-colors duration-200",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                  isActive
+                    ? "bg-white/[0.06] text-primary-foreground"
+                    : "text-foreground hover:bg-white/[0.03] hover:text-primary-foreground"
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-1/2 -left-2.5 h-6 w-[3px] -translate-y-1/2 rounded-full bg-accent"
+                    />
+                  )}
+                  <Icon size={20} className={isActive ? "text-accent" : undefined} />
+                  {label}
+                </>
+              )}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 

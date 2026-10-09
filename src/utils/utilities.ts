@@ -1,21 +1,126 @@
+import type { CurrentCityType } from "@/types/weather";
 import { WeatherIconName } from "./weatherIcons";
+
+const WEATHER_LABELS: Record<number, string> = {
+  0: "Unknown",
+  1000: "Clear",
+  1100: "Mostly clear",
+  1101: "Partly cloudy",
+  1102: "Mostly cloudy",
+  1001: "Cloudy",
+  2000: "Fog",
+  2100: "Light fog",
+  3000: "Light wind",
+  3001: "Wind",
+  3002: "Strong wind",
+  4000: "Drizzle",
+  4001: "Rain",
+  4200: "Light rain",
+  4201: "Heavy rain",
+  5000: "Snow",
+  5001: "Flurries",
+  5100: "Light snow",
+  5101: "Heavy snow",
+  6000: "Freezing drizzle",
+  6001: "Freezing rain",
+  6200: "Light freezing rain",
+  6201: "Heavy freezing rain",
+  7000: "Ice pellets",
+  7101: "Heavy ice pellets",
+  7102: "Light ice pellets",
+  8000: "Thunderstorm",
+};
+
+export function weatherCodeLabel(code: number | undefined) {
+  if (code == null) return "";
+  return WEATHER_LABELS[code] ?? "";
+}
+
+export function parseCoord(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function coordToString(value: unknown) {
+  const parsed = parseCoord(value);
+  return parsed == null ? "" : String(parsed);
+}
+
+export function hasCoords(
+  city:
+    | {
+        latitude?: string | number | null;
+        longitude?: string | number | null;
+      }
+    | null
+    | undefined
+) {
+  if (!city) return false;
+  return parseCoord(city.latitude) != null && parseCoord(city.longitude) != null;
+}
+
+export function sameCity(
+  a: Pick<CurrentCityType, "city" | "state" | "country">,
+  b: Pick<CurrentCityType, "city" | "state" | "country">
+) {
+  return (
+    a.city === b.city &&
+    (a.state ?? "") === (b.state ?? "") &&
+    (a.country ?? "") === (b.country ?? "")
+  );
+}
+
+export function formatClockTime(value: string | Date, is12Hour: boolean) {
+  const date = value instanceof Date ? value : new Date(value);
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: is12Hour,
+  }).format(date);
+}
+
+export function formatWeekday(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  return new Intl.DateTimeFormat("en", { weekday: "long" }).format(date);
+}
 
 export function convertTemperature(celsius: number) {
   return {
-    kelvin: Number((celsius + 273.15).toFixed(2)),
-    celsius: celsius,
-    fahrenheit: Number(((celsius * 9) / 5 + 32).toFixed(2)),
-    K: Number((celsius + 273.15).toFixed(2)),
-    "°C": celsius,
-    "°F": Number(((celsius * 9) / 5 + 32).toFixed(2)),
+    "°C": Math.round(celsius),
+    "°F": Math.round((celsius * 9) / 5 + 32),
   };
 }
 
-export function convertWindSpeed(kmh: number) {
+export function convertWindSpeed(metersPerSecond: number) {
   return {
-    "km/h": kmh,
-    "m/s": Number((kmh / 3.6).toFixed(2)),
-    knots: Number((kmh / 1.852).toFixed(2)),
+    "km/h": Math.round(metersPerSecond * 3.6),
+    "m/s": Math.round(metersPerSecond),
+    knots: Math.round(metersPerSecond * 1.94384),
+  };
+}
+
+export function convertPressure(hPa: number) {
+  return {
+    hPa: Math.round(hPa),
+    kPa: Number((hPa / 10).toFixed(1)),
+    in: Number((hPa * 0.02953).toFixed(2)),
+    mm: Math.round(hPa * 0.75006),
+  };
+}
+
+export function convertPrecipitation(mm: number) {
+  return {
+    mm: Number(mm.toFixed(1)),
+    in: Number((mm / 25.4).toFixed(2)),
+  };
+}
+
+export function convertDistance(km: number) {
+  return {
+    km: Number(km.toFixed(1)),
+    mi: Number((km * 0.621371).toFixed(1)),
   };
 }
 
@@ -25,7 +130,6 @@ export function weatherCodeToIconName(
 ): WeatherIconName {
   switch (code) {
     case 1000:
-      return isDay ? "clear-day" : "clear-night";
     case 1100:
       return isDay ? "clear-day" : "clear-night";
     case 1101:

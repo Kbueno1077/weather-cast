@@ -1,73 +1,73 @@
-import { format } from "@formkit/tempo";
-import { Divider } from "@nextui-org/react";
 import BoxWrapper from "@/components/ui/BoxWrapper/BoxWrapper";
 import LazyWeatherIcon from "@/components/ui/LazyWeatherIcon/LazyWeatherIcon";
-import React from "react";
-import { getCurrentUnitSettings, useWeatherStore } from "@/store/zustand";
-import { convertTemperature, weatherCodeToIconName } from "@/utils/utilities";
+import { useWeatherStore } from "@/store/zustand";
+import { cn } from "@/utils/cn";
+import {
+  convertTemperature,
+  formatClockTime,
+  weatherCodeToIconName,
+} from "@/utils/utilities";
+import { LuDroplet } from "react-icons/lu";
 
 interface ForecastProps {
-  transparent?: boolean;
+  compact?: boolean;
 }
 
-const WeatherForecast: React.FC<ForecastProps> = ({ transparent = false }) => {
-  const { hourlyWeather, unitSettings } = useWeatherStore((state) => state);
-
-  const is12Hour = unitSettings.is12Hour;
-  const temperatureUnit = getCurrentUnitSettings("temperatureUnit");
+const WeatherForecast = ({ compact = false }: ForecastProps) => {
+  const hourlyWeather = useWeatherStore((state) => state.hourlyWeather);
+  const is12Hour = useWeatherStore((state) => state.unitSettings.is12Hour);
+  const temperatureUnit = useWeatherStore((state) => state.unitSettings.temperatureUnit);
+  const hours = hourlyWeather?.timelines.hourly ?? [];
+  const visibleHours = compact ? hours.slice(0, 4) : hours;
 
   return (
-    <BoxWrapper
-      className={`w-full px-6 sm:px-12 py-8 ${
-        transparent ? "bg-transparent" : ""
-      }`}
-    >
-      <h2 className="text-sm mb-4 sm:-ml-6">
-        {!transparent ? "24H FORECAST" : "12H FORECAST"}
-      </h2>
+    <BoxWrapper className={cn("w-full", compact && "bg-transparent")}>
+      <h2 className="eyebrow mb-4">Hourly forecast</h2>
 
-      <div className="flex overflow-x-auto scrollbar-hide gap-4">
-        {hourlyWeather?.timelines?.hourly.map((forecast, index: number) => {
-          if (transparent && index > 2) return null;
-
-          const currentTime = new Date(forecast.time);
-          const isDaytime =
-            currentTime.getHours() >= 6 && currentTime.getHours() < 18;
+      <ol className="-mx-2 flex snap-x gap-1 overflow-x-auto scrollbar-hide">
+        {visibleHours.map((forecast, index) => {
+          const time = new Date(forecast.time);
+          const isDaytime = time.getHours() >= 6 && time.getHours() < 18;
+          const rain = forecast.values.precipitationProbability ?? 0;
+          const isNow = index === 0;
 
           return (
-            <React.Fragment key={forecast.time}>
-              <div className="flex flex-col gap-2 text-center ">
-                <h3 className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
-                  {format(forecast.time, is12Hour ? "h:mm A" : "HH:mm", "en")}
-                </h3>
-                <div className="flex items-center justify-center">
-                  <LazyWeatherIcon
-                    name={weatherCodeToIconName(
-                      forecast?.values.weatherCode || 0,
-                      isDaytime
-                    )}
-                    className="w-[80px] h-[80px]"
-                    alt="Weather condition"
-                  />
-                </div>
-
-                <p className="text-xl text-primary-foreground whitespace-nowrap overflow-hidden text-ellipsis">{`${
-                  convertTemperature(forecast.values.temperature || 0)[
-                    temperatureUnit as keyof typeof convertTemperature
-                  ]
-                }°`}</p>
-              </div>
-
-              {index < hourlyWeather?.timelines?.hourly.length - 1 ? (
-                <Divider
-                  orientation="vertical"
-                  className="bg-gray-600 w-[1px] mx-auto"
-                />
-              ) : null}
-            </React.Fragment>
+            <li
+              key={forecast.time}
+              className={cn(
+                "flex min-w-[72px] flex-1 snap-start flex-col items-center gap-2 rounded-2xl px-2 py-4",
+                isNow && "bg-white/[0.05] ring-1 ring-white/5 ring-inset"
+              )}
+            >
+              <span
+                className={cn(
+                  "text-xs font-medium whitespace-nowrap",
+                  isNow && "text-primary-foreground"
+                )}
+              >
+                {isNow ? "Now" : formatClockTime(forecast.time, is12Hour)}
+              </span>
+              <LazyWeatherIcon
+                name={weatherCodeToIconName(forecast.values.weatherCode || 0, isDaytime)}
+                className="size-14"
+                alt="Weather condition"
+              />
+              <span className="font-display text-lg font-medium text-primary-foreground tabular-nums">
+                {convertTemperature(forecast.values.temperature || 0)[temperatureUnit]}°
+              </span>
+              <span
+                className={cn(
+                  "flex h-4 items-center gap-0.5 text-[11px] tabular-nums text-accent",
+                  rain < 20 && "invisible"
+                )}
+              >
+                <LuDroplet aria-hidden="true" size={10} />
+                {rain}%
+              </span>
+            </li>
           );
         })}
-      </div>
+      </ol>
     </BoxWrapper>
   );
 };

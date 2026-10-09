@@ -1,17 +1,18 @@
 import BoxWrapper from "@/components/ui/BoxWrapper/BoxWrapper";
 import { useWeatherStore } from "@/store/zustand";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
   Switch,
   useDisclosure,
-  Divider,
-} from "@nextui-org/react";
-import { BsTrash3 } from "react-icons/bs";
+} from "@heroui/react";
+import { LuTrash2 } from "react-icons/lu";
+import { switchClassNames } from "@/components/ui/switchStyles";
+import SettingRow from "./SettingRow";
 
 function General() {
   const {
@@ -43,58 +44,38 @@ function General() {
       });
 
       setLocationPermission("accepted");
-    } catch (error) {
-      setLocationPermission(error.message);
-      console.error("Location permission error:", error);
+    } catch {
+      setLocationPermission("denied");
     }
   };
 
   return (
-    <BoxWrapper title="General" className="w-full flex flex-col gap-5">
-      <div className="flex justify-between items-center">
-        <div className="flex flex-col gap-1">
-          <h2 className="font-bold text-primary-foreground">12-Hour Time</h2>
-        </div>
-        <Switch
-          isSelected={unitSettings.is12Hour}
-          onValueChange={() =>
-            changeSettingsUnit("is12Hour", !unitSettings.is12Hour)
-          }
-          aria-label="Automatic updates"
-          color="success"
-        />
-      </div>
+    <BoxWrapper title="General" className="w-full">
+      <div className="divide-y divide-line">
+        <SettingRow title="12-hour time" description="Show times like 2:00 PM instead of 14:00">
+          <Switch
+            isSelected={unitSettings.is12Hour}
+            onValueChange={() => changeSettingsUnit("is12Hour", !unitSettings.is12Hour)}
+            classNames={switchClassNames}
+            aria-label="Use 12-hour time"
+          />
+        </SettingRow>
 
-      <Divider />
+        <SettingRow
+          title="Location permission"
+          description="Allow access to your location for local weather"
+        >
+          <Switch
+            isSelected={locationPermission === "accepted"}
+            onValueChange={handlePermission}
+            classNames={switchClassNames}
+            aria-label="Location permission toggle"
+          />
+        </SettingRow>
 
-      <div className="flex justify-between items-center">
-        <div className="flex flex-col gap-1">
-          <h2 className="font-bold text-primary-foreground">
-            Location Permission
-          </h2>
-          <p className="text-sm text-default-500">
-            Allow access to your location for local weather
-          </p>
-        </div>
-
-        <Switch
-          isSelected={locationPermission === "accepted"}
-          onValueChange={handlePermission}
-          color="success"
-          aria-label="Location permission toggle"
-        />
-      </div>
-
-      <Divider />
-
-      <div className="flex justify-between items-center">
-        <div className="flex flex-col gap-1">
-          <h2 className="font-bold text-primary-foreground">
-            Remove all saved
-          </h2>
-        </div>
-
-        <ConfirmDeleteModal />
+        <SettingRow title="Remove all saved" description="Clear saved cities and the current city">
+          <ConfirmDeleteModal />
+        </SettingRow>
       </div>
     </BoxWrapper>
   );
@@ -113,26 +94,38 @@ function ConfirmDeleteModal() {
 
   return (
     <>
-      <Button isIconOnly color="danger" onPress={onOpen}>
-        <BsTrash3 size={20} />
+      <Button
+        size="sm"
+        radius="full"
+        color="danger"
+        variant="flat"
+        className="shrink-0 font-medium"
+        startContent={<LuTrash2 aria-hidden="true" size={15} />}
+        onPress={onOpen}
+      >
+        Clear
       </Button>
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+      <Modal
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        backdrop="blur"
+        classNames={{ base: "border border-line bg-primary", backdrop: "bg-background/60" }}
+      >
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
-                Delete Confirmation
+              <ModalHeader className="font-display text-xl font-semibold text-primary-foreground">
+                Remove all saved data?
               </ModalHeader>
-              <ModalBody>
-                Are you sure you want to delete all saved data?
+              <ModalBody className="text-sm text-foreground">
+                This removes your saved cities and the current city. Your unit choices stay.
               </ModalBody>
               <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
-                  Close
+                <Button variant="light" className="text-foreground" onPress={onClose}>
+                  Cancel
                 </Button>
-
-                <Button color="primary" onPress={handleRemoveAll}>
-                  Accept
+                <Button color="danger" onPress={handleRemoveAll}>
+                  Remove
                 </Button>
               </ModalFooter>
             </>

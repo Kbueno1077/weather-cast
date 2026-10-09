@@ -1,30 +1,28 @@
 import BoxWrapper from "@/components/ui/BoxWrapper/BoxWrapper";
 import { useWeatherStore } from "@/store/zustand";
+import type { CurrentCityType } from "@/types/weather";
+import { cn } from "@/utils/cn";
+import { sameCity } from "@/utils/utilities";
 import { useState } from "react";
-import { CurrentCityType } from "@/types/OpenWeatherTypes";
-import { BsTrash2 } from "react-icons/bs";
-import { BiMapPin } from "react-icons/bi";
+import { LuMapPin, LuTrash2 } from "react-icons/lu";
 
 function AddedCities() {
-  const { savedCities, currentCity, changeCurrentCity, removeSavedCity } =
-    useWeatherStore((state) => state);
-  const [selectedCity, setSelectedCity] = useState<CurrentCityType | null>(
-    // @ts-expect-error currentCity typed not completed
-    currentCity || null
-  );
-
-  const handleCityClick = (city: CurrentCityType) => {
-    setSelectedCity(city);
-    changeCurrentCity(city);
-  };
+  const savedCities = useWeatherStore((state) => state.savedCities);
+  const currentCity = useWeatherStore((state) => state.currentCity);
+  const changeCurrentCity = useWeatherStore((state) => state.changeCurrentCity);
+  const removeSavedCity = useWeatherStore((state) => state.removeSavedCity);
+  const [selectedCity, setSelectedCity] = useState<CurrentCityType | null>(currentCity);
 
   if (savedCities.length === 0) {
     return (
-      <BoxWrapper className="w-full py-6">
-        <div className="flex flex-col items-center gap-4">
-          <BiMapPin className="w-12 h-12 text-primary-foreground/50" />
-          <p className="text-center text-primary-foreground">
-            No cities added yet. Use the search bar above to add cities.
+      <BoxWrapper className="w-full border-dashed border-white/10 bg-transparent py-10 shadow-none">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="grid size-12 place-items-center rounded-2xl bg-white/5">
+            <LuMapPin aria-hidden="true" size={22} />
+          </span>
+          <p className="font-medium text-primary-foreground">No saved cities yet</p>
+          <p className="max-w-xs text-sm">
+            Tap the star on the weather page, or search above to add one.
           </p>
         </div>
       </BoxWrapper>
@@ -32,45 +30,55 @@ function AddedCities() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-3">
-      {savedCities.map((city) => (
-        <BoxWrapper
-          key={city.city}
-          className={`w-full h-full py-6 ${
-            selectedCity?.city === city.city &&
-            selectedCity?.state === city.state &&
-            selectedCity?.countryName === city.countryName
-              ? "bg-transparent border-accent border-1"
-              : ""
-          }`}
-          onClick={() => handleCityClick(city)}
-        >
-          <div className="flex justify-between items-center h-full">
-            <div className="flex gap-4 items-center">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-3xl text-primary-foreground  max-w-[200px]">
-                  {city.city}
-                </h2>
-                <div>
-                  <span>
-                    {city.countryName} - {city.state}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <button
-              className="p-2 hover:bg-accent rounded-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeSavedCity(city.city);
+    <ul className="flex w-full flex-col gap-3">
+      {savedCities.map((city) => {
+        const selected = selectedCity ? sameCity(selectedCity, city) : false;
+        return (
+          <li key={`${city.city}-${city.state ?? ""}-${city.country ?? ""}`}>
+            <BoxWrapper
+              aria-current={selected ? "true" : undefined}
+              className={cn(
+                "w-full py-5",
+                selected && "bg-accent/[0.07] ring-2 ring-accent/70 hover:bg-accent/10"
+              )}
+              onClick={() => {
+                setSelectedCity(city);
+                void changeCurrentCity(city);
               }}
             >
-              <BsTrash2 className="w-5 h-5 text-primary-foreground" />
-            </button>
-          </div>
-        </BoxWrapper>
-      ))}
-    </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="truncate font-display text-2xl font-semibold tracking-tight text-primary-foreground">
+                      {city.city}
+                    </h2>
+                    {selected && (
+                      <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-accent uppercase">
+                        Viewing
+                      </span>
+                    )}
+                  </div>
+                  <span className="truncate text-sm">
+                    {[city.state, city.countryName].filter(Boolean).join(", ")}
+                  </span>
+                </div>
+                <button
+                  className="grid size-9 shrink-0 place-items-center rounded-full text-foreground transition-colors hover:bg-danger/15 hover:text-danger focus-visible:outline-2 focus-visible:outline-danger"
+                  aria-label={`Remove ${city.city}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeSavedCity(city);
+                  }}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <LuTrash2 aria-hidden="true" size={17} />
+                </button>
+              </div>
+            </BoxWrapper>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

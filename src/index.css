@@ -1,64 +1,149 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-@import "leaflet/dist/leaflet.css";
+@import "tailwindcss";
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/instrument-sans";
 
+@plugin "./hero.ts";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-accent: hsl(213 92% 61%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-line: rgb(255 255 255 / 0.07);
+  --color-warm: #f5b14c;
+
+  --font-sans:
+    "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-rise: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Tailwind 4 defaults borders to currentcolor; keep the Tailwind 3 gray. */
 @layer base {
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 217 6%, 61%;
-
-    --primary: 218 26%, 18%;
-    --primary-foreground: 0 0%, 100%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --accent: 213 92%, 61%;
-    --accent-foreground: 0 0% 100%;
-
-    --disabled: 217.2 32.6% 17.5%;
-    --disabled-foreground: 215 20.2% 65.1%;
-
-    /* Light Theme */
-    /* --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --disabled: 210 40% 96.1%;
-    --disabled-foreground: 215.4 16.3% 46.9%; */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 217 6%, 61%;
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 
-    --primary: 218 26%, 18%;
-    --primary-foreground: 0 0%, 100%;
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+  body {
+    @apply bg-background min-h-screen text-foreground font-sans;
+    background-image:
+      radial-gradient(60rem 36rem at 85% -12%, rgb(59 130 246 / 0.11), transparent 60%),
+      radial-gradient(42rem 30rem at -10% 110%, rgb(56 189 248 / 0.05), transparent 60%);
+    background-attachment: fixed;
+  }
 
-    --accent: 213 92%, 61%;
-    --accent-foreground: 0 0% 100%;
+  #root {
+    @apply min-h-screen;
+  }
 
-    --disabled: 217.2 32.6% 17.5%;
-    --disabled-foreground: 215 20.2% 65.1%;
+  ::selection {
+    background-color: rgb(59 130 246 / 0.35);
+    color: white;
   }
 }
 
-body {
-  @apply bg-background min-h-screen text-foreground;
+/* Leaflet's stylesheet is unlayered and loads later, so these stay unlayered and scoped. */
+div.leaflet-container {
+  background: #0f172a;
+  font-family: var(--font-sans);
 }
 
-#root {
-  @apply min-h-screen;
+.leaflet-container .leaflet-bar {
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 12px 24px -12px rgb(0 0 0 / 0.8);
+}
+
+.leaflet-container .leaflet-bar a {
+  background: #222c3a;
+  color: white;
+  border-bottom-color: rgb(255 255 255 / 0.07);
+}
+
+.leaflet-container .leaflet-bar a:hover {
+  background: #2b3749;
+}
+
+.leaflet-container .leaflet-control-attribution {
+  background: rgb(2 8 23 / 0.7);
+  color: #969aa2;
+  border-top-left-radius: 0.5rem;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: hsl(213 92% 70%);
+}
+
+@utility scrollbar-hide {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Fill mode stays "backwards" so no transform lingers to trap the search dropdown's z-index. */
+@utility stagger {
+  & > * {
+    animation: var(--animate-rise);
+  }
+
+  & > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+  & > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+  & > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+  & > :nth-child(5) {
+    animation-delay: 240ms;
+  }
+  & > :nth-child(n + 6) {
+    animation-delay: 300ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & > * {
+      animation: none;
+    }
+  }
+}
+
+@utility eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  @apply text-foreground;
 }
