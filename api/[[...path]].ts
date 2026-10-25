@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { dispatchApi } from "../server/dispatch";
+import { dispatchApi } from "../server/dispatch.js";
 
 function requestUrl(raw: string | undefined) {
   if (!raw) return new URL("http://localhost/");

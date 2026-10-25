@@ -1,10 +1,10 @@
-import { weatherDataFields } from "../src/utils/weatherMaps.ts";
+import { weatherDataFields } from "../src/utils/weatherMaps.js";
 import type {
   CityResult,
   ForecastPoint,
   WeatherFailure,
   WeatherSuccess,
-} from "../src/types/weather.ts";
+} from "../src/types/weather.js";
 
 type Env = Record<string, string | undefined>;
 
